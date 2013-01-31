@@ -3,5 +3,6 @@ Deface::Override.new(:virtual_path => "spree/shared/_nav_bar",
                      :insert_before => "li#home-link",
                      :partial => "spree/shared/login_bar",
                      :disabled => false, 
+                     :original => '05c6495f8760e58eb68e2cce67433cf7f5299fa4',
                      :sequence => { :after => 'add_main_nav_bar_to_top_header' }
                     )
