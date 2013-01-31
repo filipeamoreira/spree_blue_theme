@@ -1,0 +1,105 @@
+The challenge is to get the header from the base layout to fit on 1 line instead of 3 lines! (Is that
+crazy to attempt??)
+
+The header HTML structure looks like this:
+<!-- core: spree/shared/_header -->
+<header id="header" class="row" data-hook="">
+  <figure id="logo" class="columns six" data-hook=""><a href="/"><img alt="Spree_50" src="/assets/admin/bg/spree_50.png"></a></figure>
+  <!-- core: spree/shared/_nav_bar -->
+  <nav id="top-nav-bar" class="columns ten">
+    <ul id="nav-bar" class="inline" data-hook="">
+      <!-- Added by spree_auth_devise/app/overrides/auth_shared_login_bar.rb -->
+      <li id="link-to-login"><a href="/login">Login</a></li>
+      <li id="search-bar" data-hook=""></li>
+    </ul>
+  </nav>
+  <!-- core: spree/shared/_main_nav_bar -->
+  <nav class="columns sixteen">
+    <ul id="main-nav-bar" class="inline" data-hook="">
+      <li id="home-link" data-hook=""><a href="/">Home</a></li>
+      <li id="link-to-cart" data-hook=""><a href="/cart" class="empty">Cart: (Empty)</a></li>
+    </ul>
+  </nav>
+</header>
+
+which is rendered like this in the base layout:
+  | Logo         |               Log in |
+  |              |               Search |
+  ---------------------------------------
+  | Home         |                Cart  |
+
+Using CSS and Deface overrides, can we squash that into 1 line?
+  | Logo         | Log in | Search | Home Cart |
+
+We obviously have to shrink the fonts... done.
+
+It seems like we could get #top-nav-bar and _main_nav_bar on the same line using just CSS, but then
+the auth links would be to the left of the search bar and the #main-nav-bar links would be on the
+right of the search bar, so I'm guessing that's why that approach wasn't used.
+
+Since others have already tried to accomplish this using Deface, let's see if we can reverse
+engineer how that is supposed to work:
+
+add_main_nav_bar_to_top_header moves _main_nav_bar to be rendered directly after #search-bar, *within* #top-nav-bar #nav-bar ... so it's fairly
+deeply nested now.
+
+rake deface:get_result[spree/shared/_nav_bar] shows us that the _nav_bar template is transformed into this:
+
+  <nav id="top-nav-bar" class="columns ten">
+    <ul id="nav-bar" class="inline" data-hook>
+      <li id="search-bar" data-hook>
+        <%= render :partial => 'spree/shared/search' %>
+      </li>
+      <nav class="columns sixteen">
+        <ul id="main-nav-bar" class="inline" data-hook>
+          <li id="home-link" data-hook><%= link_to t(:home), root_path %></li>
+          <li id="link-to-cart" data-hook class="cart-indicator"><%= link_to_cart %></li>
+        </ul>
+      </nav>
+    </ul>
+  </nav>
+
+(Then we have to remove the *original* place where _main_nav_bar is rendered so that we don't end up
+with 2 copies. That is handled by remove_main_nav_bar_from_middle_header.)
+
+We also change where _login_bar gets rendered, so that it too is rendered directly *after*
+#search-bar. (We use :sequence to ensure that this occurs *after* #main-nav-bar has already been
+added, so that the _login_bar links are *after* the search bar but *before* the #main-nav-bar links.)
+
+Now rake deface:get_result[spree/shared/_nav_bar] shows us that _nav_bar looks like this:
+
+  <nav id="top-nav-bar" class="columns ten">
+    <ul id="nav-bar" class="inline" data-hook>
+      <li id="search-bar" data-hook>
+        <%= render :partial => 'spree/shared/search' %>
+      </li>
+      <nav class="columns sixteen">
+        <ul id="main-nav-bar" class="inline" data-hook>
+          <% if spree_current_user %>
+            <li><%= link_to t(:my_account), spree.account_path %></li>
+            <li><%= link_to t(:logout), spree.destroy_user_session_path %></li>
+          <% else %>
+            <li id="link-to-login"><%= link_to t(:login), spree.login_path %></li>
+          <% end %>
+          <li id="home-link" data-hook><%= link_to t(:home), root_path %></li>
+          <li id="link-to-cart" data-hook class="cart-indicator"><%= link_to_cart %></li>
+        </ul>
+      </nav>
+    </ul>
+  </nav>
+
+Since #search-bar and the nav.columns.sixteen following it are siblings now:
+    <ul id="nav-bar" class="inline" data-hook>
+      <li id="search-bar" data-hook>...
+      <nav class="columns sixteen">...
+
+we have to float the #search-bar so that they both can be on the same line:
+
+  #search-bar {
+    float: left;
+  }
+
+To test that it all fits on one line, make sure you're signed in as a user and go to the home page.
+You should see 4 links after the search bar:
+
+  My Account  Logout  Home  Cart: (Empty)
