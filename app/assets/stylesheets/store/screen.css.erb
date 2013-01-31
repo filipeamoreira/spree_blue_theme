@@ -1143,6 +1143,7 @@ form#checkout_form_address {
 #shipping_method #methods label {
   display: block;
 }
+
 #order_details .steps-data, #order_summary .steps-data{
   display: block;
   margin-top: 10px;
@@ -1152,7 +1153,8 @@ form#checkout_form_address {
   display: block;
   float: left;
   padding-right: 20px;
-  width: 210px;
+  /* width: 210px; doesn't work when we're having to fit inside of 910px instead of 940px! */
+  width: 200px;
 }
 #order_details .steps-data div.columns.four.omega,
 #order_summary .steps-data div.columns.four.omega {
@@ -1162,4 +1164,7 @@ form#checkout_form_address {
 #order_summary .steps-data .payment-info .cc-type img{
   float: left;
   padding-right: 5px;
+}
+#order_summary .columns.sixteen {
+  width: auto;
 }
